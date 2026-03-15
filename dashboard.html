@@ -540,13 +540,48 @@
     // ===========================================
     async function loadData() {
       try {
+        // Show loading spinner
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        
         // Fetch agents and team structure
         const agentsResponse = await fetch(APPS_SCRIPT_URL + '?action=getAgents');
         teamStructure = await agentsResponse.json();
+        console.log('Team structure loaded:', teamStructure);
         
-        // Fetch leaflet data (you'll need to create this endpoint)
-        // For now, using sample data
-        allData = generateSampleData();
+        // Fetch REAL leaflet data from your sheet
+        const dataResponse = await fetch(APPS_SCRIPT_URL + '?action=getLeafletData');
+        
+        if (!dataResponse.ok) {
+          throw new Error(`HTTP error! status: ${dataResponse.status}`);
+        }
+        
+        const rawData = await dataResponse.json();
+        console.log('Raw data from sheet:', rawData);
+        
+        // Check if we got an error message
+        if (rawData.error) {
+          throw new Error(rawData.error);
+        }
+        
+        // Transform data to match our format
+        if (Array.isArray(rawData) && rawData.length > 0) {
+          allData = rawData.map(row => ({
+            date: row.Date || row.date || '',
+            agentName: row.AgentName || row.agentName || '',
+            teamLead: row.TeamLead || row.teamLead || '',
+            zone: row.Zone || row.zone || '',
+            visited: parseInt(row.PlacesVisited || row.visited || 0),
+            leaflets: parseInt(row.Leaflets || row.leaflets || 0),
+            opened: parseInt(row.Opened || row.opened || 0),
+            notOpened: parseInt(row.NotOpened || row.notOpened || 0),
+            kyc: parseInt(row.KYC || row.kyc || 0),
+            notes: row.Notes || row.notes || ''
+          }));
+          console.log('Processed data:', allData);
+        } else {
+          console.log('No data in sheet yet');
+          allData = [];
+        }
         
         filteredData = [...allData];
         populateFilters();
@@ -554,36 +589,21 @@
         hideLoader();
 
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error loading data:', error);
+        
+        // Show error message on dashboard
+        const container = document.querySelector('.dashboard-container');
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = 'background: #FFEBEE; color: #D32F2F; padding: 20px; border-radius: 16px; margin: 20px; text-align: center;';
+        errorDiv.innerHTML = `
+          <strong>❌ Failed to load data</strong><br>
+          ${error.message}<br><br>
+          <button onclick="location.reload()" style="background: #A05AFF; color: white; border: none; padding: 8px 20px; border-radius: 40px; cursor: pointer;">Retry</button>
+        `;
+        container.prepend(errorDiv);
+        
         hideLoader();
       }
-    }
-
-    // Generate sample data for testing
-    function generateSampleData() {
-      const data = [];
-      const agents = ['Ahmed Khan', 'Sara Ahmed', 'John Smith', 'Fatima Ali'];
-      const teamLeads = ['Ali', 'Omar'];
-      const zones = ['Zone 43', 'Zone 45', 'Zone 50'];
-      
-      for (let i = 0; i < 50; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - Math.floor(Math.random() * 30));
-        
-        data.push({
-          date: date.toISOString().split('T')[0],
-          agentName: agents[Math.floor(Math.random() * agents.length)],
-          teamLead: teamLeads[Math.floor(Math.random() * teamLeads.length)],
-          zone: zones[Math.floor(Math.random() * zones.length)],
-          visited: Math.floor(Math.random() * 15) + 5,
-          leaflets: Math.floor(Math.random() * 20) + 3,
-          opened: Math.floor(Math.random() * 12) + 2,
-          notOpened: Math.floor(Math.random() * 8) + 1,
-          kyc: Math.floor(Math.random() * 8) + 1,
-          notes: ''
-        });
-      }
-      return data;
     }
 
     function populateFilters() {
