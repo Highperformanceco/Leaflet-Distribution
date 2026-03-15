@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaflet Distribution Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body { 
+      background: #F5F7FA;
+      font-family: 'Inter', sans-serif;
+      padding: 20px;
+    }
+
+    .dashboard-container {
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .dashboard-header {
+      background: white;
+      border-radius: 24px;
+      padding: 20px 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border-left: 6px solid #A05AFF;
+    }
+
+    h3 {
+      color: #2D3A45;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .secure-badge {
+      background: #A05AFF;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      margin-left: 15px;
+      display: inline-block;
+    }
+
+    /* Loading Spinner */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.3s ease;
+    }
+
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 5px solid #E9EDF2;
+      border-top: 5px solid #A05AFF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      margin-top: 20px;
+      color: #2D3A45;
+      font-weight: 500;
+    }
+
+    /* Filter Panel */
+    .filter-panel {
+      background: white;
+      border-radius: 20px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-item {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .filter-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #6B7A8D;
+      margin-bottom: 4px;
+    }
+
+    .filter-select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #E9EDF2;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      color: #2D3A45;
+      background: white;
+    }
+
+    .date-range {
+      display: flex;
+      gap: 8px;
+    }
+
+    .date-range input {
+      padding: 8px 12px;
+      border: 1px solid #E9EDF2;
+      border-radius: 12px;
+      font-size: 0.9rem;
+    }
+
+    .btn-apply {
+      background: #A05AFF;
+      color: white;
+      border: none;
+      padding: 8px 25px;
+      border-radius: 40px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-apply:hover {
+      background: #8A3FE0;
+    }
+
+    .btn-reset {
+      background: white;
+      color: #6B7A8D;
+      border: 1px solid #E9EDF2;
+      padding: 8px 25px;
+      border-radius: 40px;
+      cursor: pointer;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border-top: 4px solid #A05AFF;
+    }
+
+    .kpi-value {
+      font-size: 2.2rem;
+      font-weight: 600;
+      color: #2D3A45;
+      line-height: 1.2;
+    }
+
+    .kpi-label {
+      color: #6B7A8D;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+
+    .kpi-target {
+      font-size: 0.8rem;
+      margin-top: 8px;
+      padding: 4px 10px;
+      background: #F5F7FA;
+      border-radius: 20px;
+      display: inline-block;
+    }
+
+    .target-met {
+      color: #1BCFB4;
+      font-weight: 600;
+    }
+
+    .target-missed {
+      color: #FE9496;
+      font-weight: 600;
+    }
+
+    /* Charts Grid */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .chart-card {
+      background: white;
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .chart-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #2D3A45;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #E9EDF2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chart-container {
+      height: 280px;
+      width: 100%;
+      position: relative;
+    }
+
+    /* Zone Performance */
+    .zone-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .zone-card {
+      background: white;
+      border-radius: 20px;
+      padding: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border-left: 4px solid #A05AFF;
+    }
+
+    .zone-name {
+      font-weight: 600;
+      color: #2D3A45;
+      margin-bottom: 10px;
+    }
+
+    .zone-stats {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: #6B7A8D;
+    }
+
+    .zone-progress {
+      height: 8px;
+      background: #E9EDF2;
+      border-radius: 20px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+
+    .zone-progress-bar {
+      height: 100%;
+      background: #A05AFF;
+      border-radius: 20px;
+      transition: width 0.3s ease;
+    }
+
+    /* Team Performance */
+    .team-list {
+      background: white;
+      border-radius: 20px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .team-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #E9EDF2;
+    }
+
+    .team-row:last-child {
+      border-bottom: none;
+    }
+
+    .team-name {
+      width: 120px;
+      font-weight: 500;
+    }
+
+    .team-stats {
+      flex: 1;
+      display: flex;
+      gap: 20px;
+    }
+
+    .team-stat {
+      font-size: 0.9rem;
+    }
+
+    .team-stat span {
+      color: #6B7A8D;
+      margin-right: 5px;
+    }
+
+    /* Table */
+    .table-container {
+      background: white;
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th {
+      text-align: left;
+      padding: 15px 10px;
+      background: #F5F7FA;
+      color: #2D3A45;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #E9EDF2;
+      color: #2D3A45;
+    }
+
+    /* Colors */
+    .purple { color: #A05AFF; }
+    .teal { color: #1BCFB4; }
+    .coral { color: #FE9496; }
+    .blue { color: #4BCBEB; }
+  </style>
+</head>
+<body>
+  <!-- Loading Spinner -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div style="text-align: center;">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading dashboard...</div>
+    </div>
+  </div>
+
+  <div class="dashboard-container">
+    <!-- Header -->
+    <div class="dashboard-header d-flex justify-content-between align-items-center">
+      <div>
+        <h3>📋 Leaflet Distribution Dashboard <span class="secure-badge">🔒 Live Data</span></h3>
+        <p style="color: #6B7A8D; margin: 5px 0 0;">Real-time tracking & performance analytics</p>
+      </div>
+      <div style="display: flex; gap: 20px;">
+        <div style="text-align: right;">
+          <div class="kpi-value" style="font-size: 1.5rem;" id="totalAgents">0</div>
+          <div style="color: #6B7A8D; font-size: 0.8rem;">Active Agents</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="kpi-value" style="font-size: 1.5rem;" id="totalZones">0</div>
+          <div style="color: #6B7A8D; font-size: 0.8rem;">Active Zones</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-panel">
+      <div class="filter-item">
+        <div class="filter-label">TEAM LEAD</div>
+        <select class="filter-select" id="teamLeadFilter">
+          <option value="">All Team Leads</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <div class="filter-label">ZONE</div>
+        <select class="filter-select" id="zoneFilter">
+          <option value="">All Zones</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <div class="filter-label">AGENT</div>
+        <select class="filter-select" id="agentFilter">
+          <option value="">All Agents</option>
+        </select>
+      </div>
+      <div class="filter-item">
+        <div class="filter-label">DATE RANGE</div>
+        <div class="date-range">
+          <input type="date" id="startDate">
+          <input type="date" id="endDate">
+        </div>
+      </div>
+      <div>
+        <button class="btn-apply" id="applyFilters">Apply</button>
+        <button class="btn-reset" id="resetFilters">Reset</button>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-value" id="totalVisits">0</div>
+        <div class="kpi-label">Total Places Visited</div>
+        <div class="kpi-target">Target: <span class="target-met" id="visitTarget">0%</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" id="totalLeaflets">0</div>
+        <div class="kpi-label">Leaflets Distributed</div>
+        <div class="kpi-target">Per Visit: <span class="target-met" id="leafletPerVisit">0</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" id="totalKYC">0</div>
+        <div class="kpi-label">KYC Completed</div>
+        <div class="kpi-target">Target: <span class="target-met" id="kycTarget">0%</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value" id="successRate">0%</div>
+        <div class="kpi-label">Door Opening Rate</div>
+        <div class="kpi-target"><span class="target-met" id="openedRate">0</span> opened / <span class="target-missed" id="notOpenedRate">0</span> not opened</div>
+      </div>
+    </div>
+
+    <!-- Zone Performance -->
+    <div class="zone-grid" id="zoneGrid">
+      <!-- Will be populated by JavaScript -->
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">
+          📊 Team Performance
+          <span class="badge" style="background: #A05AFF; color: white; padding: 3px 10px; border-radius: 40px;">vs Target</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="teamPerformanceChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">
+          📈 Daily Trends
+          <span class="badge" style="background: #4BCBEB; color: white; padding: 3px 10px; border-radius: 40px;">Last 7 Days</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="dailyTrendsChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Performance List -->
+    <div class="team-list">
+      <div class="chart-title" style="margin-bottom: 15px;">👥 Agent Performance</div>
+      <div id="teamList">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Detailed Table -->
+    <div class="table-container">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="chart-title" style="margin: 0;">📋 Detailed Records</span>
+        <span class="badge" style="background: #A05AFF; color: white; padding: 5px 15px; border-radius: 40px;" id="recordCount">0 records</span>
+      </div>
+      <div style="max-height: 400px; overflow-y: auto;">
+        <table class="table" id="dataTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Agent</th>
+              <th>Team Lead</th>
+              <th>Zone</th>
+              <th>Visited</th>
+              <th>Leaflets</th>
+              <th>Opened</th>
+              <th>KYC</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="9" class="text-center">Loading data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    Chart.register(ChartDataLabels);
+
+    // ===========================================
+    // YOUR APPS SCRIPT URL
+    // ===========================================
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3vBnuXCJkOdCti1ugm98gSGK8dvI7C3NIn1QzKKCUyegG1uW9PcdT23xHEQn_SijORw/exec';
+    
+    // Target per agent
+    const TARGET_VISITS = 10;
+    const TARGET_KYC = 10;
+    
+    // Globals
+    let allData = [];
+    let filteredData = [];
+    let charts = {};
+    let teamStructure = {};
+
+    // Hide loader
+    function hideLoader() {
+      document.getElementById('loadingOverlay').style.opacity = '0';
+      setTimeout(() => {
+        document.getElementById('loadingOverlay').style.display = 'none';
+      }, 300);
+    }
+
+    // ===========================================
+    // Load Data
+    // ===========================================
+    async function loadData() {
+      try {
+        // Fetch agents and team structure
+        const agentsResponse = await fetch(APPS_SCRIPT_URL + '?action=getAgents');
+        teamStructure = await agentsResponse.json();
+        
+        // Fetch leaflet data (you'll need to create this endpoint)
+        // For now, using sample data
+        allData = generateSampleData();
+        
+        filteredData = [...allData];
+        populateFilters();
+        updateDashboard();
+        hideLoader();
+
+      } catch (error) {
+        console.error('Error:', error);
+        hideLoader();
+      }
+    }
+
+    // Generate sample data for testing
+    function generateSampleData() {
+      const data = [];
+      const agents = ['Ahmed Khan', 'Sara Ahmed', 'John Smith', 'Fatima Ali'];
+      const teamLeads = ['Ali', 'Omar'];
+      const zones = ['Zone 43', 'Zone 45', 'Zone 50'];
+      
+      for (let i = 0; i < 50; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+        
+        data.push({
+          date: date.toISOString().split('T')[0],
+          agentName: agents[Math.floor(Math.random() * agents.length)],
+          teamLead: teamLeads[Math.floor(Math.random() * teamLeads.length)],
+          zone: zones[Math.floor(Math.random() * zones.length)],
+          visited: Math.floor(Math.random() * 15) + 5,
+          leaflets: Math.floor(Math.random() * 20) + 3,
+          opened: Math.floor(Math.random() * 12) + 2,
+          notOpened: Math.floor(Math.random() * 8) + 1,
+          kyc: Math.floor(Math.random() * 8) + 1,
+          notes: ''
+        });
+      }
+      return data;
+    }
+
+    function populateFilters() {
+      // Team Lead filter
+      const leads = [...new Set(allData.map(d => d.teamLead))].sort();
+      const leadSelect = document.getElementById('teamLeadFilter');
+      leads.forEach(lead => {
+        const option = document.createElement('option');
+        option.value = lead;
+        option.textContent = lead;
+        leadSelect.appendChild(option);
+      });
+
+      // Zone filter
+      const zones = [...new Set(allData.map(d => d.zone))].sort();
+      const zoneSelect = document.getElementById('zoneFilter');
+      zones.forEach(zone => {
+        const option = document.createElement('option');
+        option.value = zone;
+        option.textContent = zone;
+        zoneSelect.appendChild(option);
+      });
+
+      // Agent filter
+      const agents = [...new Set(allData.map(d => d.agentName))].sort();
+      const agentSelect = document.getElementById('agentFilter');
+      agents.forEach(agent => {
+        const option = document.createElement('option');
+        option.value = agent;
+        option.textContent = agent;
+        agentSelect.appendChild(option);
+      });
+    }
+
+    function updateDashboard() {
+      const total = filteredData.length;
+      
+      // Calculate totals
+      const totalVisits = filteredData.reduce((sum, row) => sum + (row.visited || 0), 0);
+      const totalLeaflets = filteredData.reduce((sum, row) => sum + (row.leaflets || 0), 0);
+      const totalKYC = filteredData.reduce((sum, row) => sum + (row.kyc || 0), 0);
+      const totalOpened = filteredData.reduce((sum, row) => sum + (row.opened || 0), 0);
+      const totalNotOpened = filteredData.reduce((sum, row) => sum + (row.notOpened || 0), 0);
+      
+      // Calculate rates
+      const uniqueAgents = [...new Set(filteredData.map(d => d.agentName))].length;
+      const expectedVisits = uniqueAgents * TARGET_VISITS;
+      const expectedKYC = uniqueAgents * TARGET_KYC;
+      
+      const visitTargetPct = expectedVisits > 0 ? (totalVisits / expectedVisits * 100).toFixed(1) : 0;
+      const kycTargetPct = expectedKYC > 0 ? (totalKYC / expectedKYC * 100).toFixed(1) : 0;
+      const leafletPerVisit = totalVisits > 0 ? (totalLeaflets / totalVisits).toFixed(1) : 0;
+      const successRate = totalVisits > 0 ? ((totalOpened / totalVisits) * 100).toFixed(1) : 0;
+
+      // Update KPI cards
+      document.getElementById('totalVisits').innerText = totalVisits;
+      document.getElementById('totalLeaflets').innerText = totalLeaflets;
+      document.getElementById('totalKYC').innerText = totalKYC;
+      document.getElementById('successRate').innerText = successRate + '%';
+      
+      document.getElementById('visitTarget').innerText = visitTargetPct + '%';
+      document.getElementById('kycTarget').innerText = kycTargetPct + '%';
+      document.getElementById('leafletPerVisit').innerText = leafletPerVisit;
+      document.getElementById('openedRate').innerText = totalOpened;
+      document.getElementById('notOpenedRate').innerText = totalNotOpened;
+
+      document.getElementById('totalAgents').innerText = uniqueAgents;
+      document.getElementById('totalZones').innerText = [...new Set(filteredData.map(d => d.zone))].length;
+
+      // Update zone performance
+      updateZonePerformance();
+      
+      // Update charts
+      updateCharts();
+      
+      // Update team list
+      updateTeamList();
+      
+      // Update table
+      updateTable();
+      
+      document.getElementById('recordCount').innerText = total + ' records';
+    }
+
+    function updateZonePerformance() {
+      const zones = {};
+      filteredData.forEach(row => {
+        if (!zones[row.zone]) {
+          zones[row.zone] = { visited: 0, leaflets: 0, kyc: 0, count: 0 };
+        }
+        zones[row.zone].visited += row.visited || 0;
+        zones[row.zone].leaflets += row.leaflets || 0;
+        zones[row.zone].kyc += row.kyc || 0;
+        zones[row.zone].count++;
+      });
+
+      const zoneGrid = document.getElementById('zoneGrid');
+      zoneGrid.innerHTML = '';
+
+      Object.entries(zones).forEach(([zone, data]) => {
+        const agentsInZone = [...new Set(filteredData.filter(d => d.zone === zone).map(d => d.agentName))].length;
+        const targetVisits = agentsInZone * TARGET_VISITS;
+        const progress = targetVisits > 0 ? (data.visited / targetVisits * 100) : 0;
+        
+        const card = document.createElement('div');
+        card.className = 'zone-card';
+        card.innerHTML = `
+          <div class="zone-name">${zone}</div>
+          <div class="zone-stats">
+            <span>👥 ${agentsInZone} agents</span>
+            <span>📄 ${data.leaflets}</span>
+          </div>
+          <div class="zone-progress">
+            <div class="zone-progress-bar" style="width: ${progress}%;"></div>
+          </div>
+          <div class="zone-stats">
+            <span>🎯 ${data.visited} visits</span>
+            <span>✅ ${data.kyc} KYC</span>
+          </div>
+        `;
+        zoneGrid.appendChild(card);
+      });
+    }
+
+    function updateCharts() {
+      // Team Performance Chart
+      const teams = {};
+      filteredData.forEach(row => {
+        if (!teams[row.teamLead]) {
+          teams[row.teamLead] = { visited: 0, kyc: 0, count: 0 };
+        }
+        teams[row.teamLead].visited += row.visited || 0;
+        teams[row.teamLead].kyc += row.kyc || 0;
+        teams[row.teamLead].count++;
+      });
+
+      if (charts.teamChart) charts.teamChart.destroy();
+      
+      const ctx1 = document.getElementById('teamPerformanceChart').getContext('2d');
+      charts.teamChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(teams),
+          datasets: [
+            {
+              label: 'Visits',
+              data: Object.values(teams).map(t => t.visited),
+              backgroundColor: '#A05AFF',
+              borderRadius: 6
+            },
+            {
+              label: 'KYC',
+              data: Object.values(teams).map(t => t.kyc),
+              backgroundColor: '#1BCFB4',
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' },
+            datalabels: {
+              color: '#2D3A45',
+              font: { weight: 'bold' },
+              formatter: (value) => value
+            }
+          }
+        }
+      });
+
+      // Daily Trends Chart
+      const last7Days = [];
+      const dailyVisits = [];
+      const dailyKYC = [];
+      
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        last7Days.push(dateStr.slice(5));
+        
+        const dayData = filteredData.filter(d => d.date === dateStr);
+        dailyVisits.push(dayData.reduce((sum, d) => sum + (d.visited || 0), 0));
+        dailyKYC.push(dayData.reduce((sum, d) => sum + (d.kyc || 0), 0));
+      }
+
+      if (charts.trendChart) charts.trendChart.destroy();
+      
+      const ctx2 = document.getElementById('dailyTrendsChart').getContext('2d');
+      charts.trendChart = new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: last7Days,
+          datasets: [
+            {
+              label: 'Visits',
+              data: dailyVisits,
+              borderColor: '#A05AFF',
+              backgroundColor: 'rgba(160, 90, 255, 0.1)',
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: 'KYC',
+              data: dailyKYC,
+              borderColor: '#1BCFB4',
+              backgroundColor: 'rgba(27, 207, 180, 0.1)',
+              tension: 0.3,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    function updateTeamList() {
+      const agents = {};
+      filteredData.forEach(row => {
+        if (!agents[row.agentName]) {
+          agents[row.agentName] = {
+            teamLead: row.teamLead,
+            zone: row.zone,
+            visited: 0,
+            leaflets: 0,
+            kyc: 0,
+            days: 0
+          };
+        }
+        agents[row.agentName].visited += row.visited || 0;
+        agents[row.agentName].leaflets += row.leaflets || 0;
+        agents[row.agentName].kyc += row.kyc || 0;
+        agents[row.agentName].days++;
+      });
+
+      const teamList = document.getElementById('teamList');
+      teamList.innerHTML = '';
+
+      Object.entries(agents).forEach(([name, data]) => {
+        const avgVisits = (data.visited / data.days).toFixed(1);
+        const avgKYC = (data.kyc / data.days).toFixed(1);
+        const targetMet = avgVisits >= TARGET_VISITS ? 'target-met' : 'target-missed';
+        
+        const row = document.createElement('div');
+        row.className = 'team-row';
+        row.innerHTML = `
+          <div class="team-name">${name}</div>
+          <div class="team-stats">
+            <div class="team-stat"><span>📊</span> ${data.visited} visits</div>
+            <div class="team-stat"><span>✅</span> ${data.kyc} KYC</div>
+            <div class="team-stat"><span>📈</span> Avg ${avgVisits}/day</div>
+          </div>
+          <div class="${targetMet}">${avgVisits >= TARGET_VISITS ? '🎯 Target Met' : '⚠️ Below Target'}</div>
+        `;
+        teamList.appendChild(row);
+      });
+    }
+
+    function updateTable() {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      
+      filteredData.slice(0, 50).forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.date || '-'}</td>
+          <td>${row.agentName || '-'}</td>
+          <td>${row.teamLead || '-'}</td>
+          <td>${row.zone || '-'}</td>
+          <td>${row.visited || '-'}</td>
+          <td>${row.leaflets || '-'}</td>
+          <td>${row.opened || '-'}</td>
+          <td>${row.kyc || '-'}</td>
+          <td>${row.notes || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Filter handlers
+    document.getElementById('applyFilters').addEventListener('click', () => {
+      const teamLead = document.getElementById('teamLeadFilter').value;
+      const zone = document.getElementById('zoneFilter').value;
+      const agent = document.getElementById('agentFilter').value;
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      
+      filteredData = allData.filter(row => {
+        let match = true;
+        
+        if (teamLead && row.teamLead !== teamLead) match = false;
+        if (zone && row.zone !== zone) match = false;
+        if (agent && row.agentName !== agent) match = false;
+        
+        if (startDate && row.date < startDate) match = false;
+        if (endDate && row.date > endDate) match = false;
+        
+        return match;
+      });
+      
+      updateDashboard();
+    });
+
+    document.getElementById('resetFilters').addEventListener('click', () => {
+      document.getElementById('teamLeadFilter').value = '';
+      document.getElementById('zoneFilter').value = '';
+      document.getElementById('agentFilter').value = '';
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      
+      filteredData = [...allData];
+      updateDashboard();
+    });
+
+    // Initialize
+    window.onload = loadData;
+  </script>
+</body>
+</html>
