@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Leaflet Distribution Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -525,7 +526,7 @@
     let allData = [];
     let filteredData = [];
     let charts = {};
-    let teamStructure = {};
+    let teamStructure = [];
 
     // Hide loader
     function hideLoader() {
@@ -535,20 +536,38 @@
       }, 300);
     }
 
+    // Show error
+    function showError(message) {
+      const container = document.querySelector('.dashboard-container');
+      const errorDiv = document.createElement('div');
+      errorDiv.style.cssText = 'background: #FFEBEE; color: #D32F2F; padding: 20px; border-radius: 16px; margin: 20px; text-align: center;';
+      errorDiv.innerHTML = `
+        <strong>❌ Failed to load data</strong><br>
+        ${message}<br><br>
+        <button onclick="location.reload()" style="background: #A05AFF; color: white; border: none; padding: 8px 20px; border-radius: 40px; cursor: pointer;">Retry</button>
+      `;
+      container.prepend(errorDiv);
+      hideLoader();
+    }
+
     // ===========================================
     // Load Data
     // ===========================================
     async function loadData() {
       try {
+        console.log('🚀 Loading dashboard data...');
+        
         // Show loading spinner
         document.getElementById('loadingOverlay').style.display = 'flex';
         
         // Fetch agents and team structure
+        console.log('📡 Fetching agents...');
         const agentsResponse = await fetch(APPS_SCRIPT_URL + '?action=getAgents');
         teamStructure = await agentsResponse.json();
-        console.log('Team structure loaded:', teamStructure);
+        console.log('✅ Team structure loaded:', teamStructure);
         
-        // Fetch REAL leaflet data from your sheet
+        // Fetch leaflet data
+        console.log('📡 Fetching leaflet data...');
         const dataResponse = await fetch(APPS_SCRIPT_URL + '?action=getLeafletData');
         
         if (!dataResponse.ok) {
@@ -556,7 +575,7 @@
         }
         
         const rawData = await dataResponse.json();
-        console.log('Raw data from sheet:', rawData);
+        console.log('✅ Raw data from sheet:', rawData);
         
         // Check if we got an error message
         if (rawData.error) {
@@ -566,20 +585,20 @@
         // Transform data to match our format
         if (Array.isArray(rawData) && rawData.length > 0) {
           allData = rawData.map(row => ({
-            date: row.Date || row.date || '',
-            agentName: row.AgentName || row.agentName || '',
-            teamLead: row.TeamLead || row.teamLead || '',
-            zone: row.Zone || row.zone || '',
-            visited: parseInt(row.PlacesVisited || row.visited || 0),
-            leaflets: parseInt(row.Leaflets || row.leaflets || 0),
-            opened: parseInt(row.Opened || row.opened || 0),
-            notOpened: parseInt(row.NotOpened || row.notOpened || 0),
-            kyc: parseInt(row.KYC || row.kyc || 0),
-            notes: row.Notes || row.notes || ''
+            date: row.Date ? new Date(row.Date).toISOString().split('T')[0] : '',
+            agentName: row.AgentName || '',
+            teamLead: row.TeamLead || '',
+            zone: row.Zone || '',
+            visited: parseInt(row.PlacesVisited) || 0,
+            leaflets: parseInt(row.Leaflets) || 0,
+            opened: parseInt(row.Opened) || 0,
+            notOpened: parseInt(row.NotOpened) || 0,
+            kyc: parseInt(row.KYC) || 0,
+            notes: row.Notes || ''
           }));
-          console.log('Processed data:', allData);
+          console.log('✅ Processed data:', allData);
         } else {
-          console.log('No data in sheet yet');
+          console.log('ℹ️ No data in sheet yet');
           allData = [];
         }
         
@@ -589,37 +608,32 @@
         hideLoader();
 
       } catch (error) {
-        console.error('Error loading data:', error);
-        
-        // Show error message on dashboard
-        const container = document.querySelector('.dashboard-container');
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = 'background: #FFEBEE; color: #D32F2F; padding: 20px; border-radius: 16px; margin: 20px; text-align: center;';
-        errorDiv.innerHTML = `
-          <strong>❌ Failed to load data</strong><br>
-          ${error.message}<br><br>
-          <button onclick="location.reload()" style="background: #A05AFF; color: white; border: none; padding: 8px 20px; border-radius: 40px; cursor: pointer;">Retry</button>
-        `;
-        container.prepend(errorDiv);
-        
-        hideLoader();
+        console.error('❌ Error loading data:', error);
+        showError(error.message);
       }
     }
 
     function populateFilters() {
+      // Clear existing options
+      const teamLeadSelect = document.getElementById('teamLeadFilter');
+      const zoneSelect = document.getElementById('zoneFilter');
+      const agentSelect = document.getElementById('agentFilter');
+      
+      teamLeadSelect.innerHTML = '<option value="">All Team Leads</option>';
+      zoneSelect.innerHTML = '<option value="">All Zones</option>';
+      agentSelect.innerHTML = '<option value="">All Agents</option>';
+      
       // Team Lead filter
-      const leads = [...new Set(allData.map(d => d.teamLead))].sort();
-      const leadSelect = document.getElementById('teamLeadFilter');
+      const leads = [...new Set(allData.map(d => d.teamLead).filter(Boolean))].sort();
       leads.forEach(lead => {
         const option = document.createElement('option');
         option.value = lead;
         option.textContent = lead;
-        leadSelect.appendChild(option);
+        teamLeadSelect.appendChild(option);
       });
 
       // Zone filter
-      const zones = [...new Set(allData.map(d => d.zone))].sort();
-      const zoneSelect = document.getElementById('zoneFilter');
+      const zones = [...new Set(allData.map(d => d.zone).filter(Boolean))].sort();
       zones.forEach(zone => {
         const option = document.createElement('option');
         option.value = zone;
@@ -628,8 +642,7 @@
       });
 
       // Agent filter
-      const agents = [...new Set(allData.map(d => d.agentName))].sort();
-      const agentSelect = document.getElementById('agentFilter');
+      const agents = [...new Set(allData.map(d => d.agentName).filter(Boolean))].sort();
       agents.forEach(agent => {
         const option = document.createElement('option');
         option.value = agent;
@@ -639,6 +652,8 @@
     }
 
     function updateDashboard() {
+      console.log('🔄 Updating dashboard...');
+      
       const total = filteredData.length;
       
       // Calculate totals
@@ -649,7 +664,7 @@
       const totalNotOpened = filteredData.reduce((sum, row) => sum + (row.notOpened || 0), 0);
       
       // Calculate rates
-      const uniqueAgents = [...new Set(filteredData.map(d => d.agentName))].length;
+      const uniqueAgents = [...new Set(filteredData.map(d => d.agentName).filter(Boolean))].length;
       const expectedVisits = uniqueAgents * TARGET_VISITS;
       const expectedKYC = uniqueAgents * TARGET_KYC;
       
@@ -671,7 +686,7 @@
       document.getElementById('notOpenedRate').innerText = totalNotOpened;
 
       document.getElementById('totalAgents').innerText = uniqueAgents;
-      document.getElementById('totalZones').innerText = [...new Set(filteredData.map(d => d.zone))].length;
+      document.getElementById('totalZones').innerText = [...new Set(filteredData.map(d => d.zone).filter(Boolean))].length;
 
       // Update zone performance
       updateZonePerformance();
@@ -686,11 +701,13 @@
       updateTable();
       
       document.getElementById('recordCount').innerText = total + ' records';
+      console.log('✅ Dashboard updated');
     }
 
     function updateZonePerformance() {
       const zones = {};
       filteredData.forEach(row => {
+        if (!row.zone) return;
         if (!zones[row.zone]) {
           zones[row.zone] = { visited: 0, leaflets: 0, kyc: 0, count: 0 };
         }
@@ -704,7 +721,7 @@
       zoneGrid.innerHTML = '';
 
       Object.entries(zones).forEach(([zone, data]) => {
-        const agentsInZone = [...new Set(filteredData.filter(d => d.zone === zone).map(d => d.agentName))].length;
+        const agentsInZone = [...new Set(filteredData.filter(d => d.zone === zone).map(d => d.agentName).filter(Boolean))].length;
         const targetVisits = agentsInZone * TARGET_VISITS;
         const progress = targetVisits > 0 ? (data.visited / targetVisits * 100) : 0;
         
@@ -732,6 +749,7 @@
       // Team Performance Chart
       const teams = {};
       filteredData.forEach(row => {
+        if (!row.teamLead) return;
         if (!teams[row.teamLead]) {
           teams[row.teamLead] = { visited: 0, kyc: 0, count: 0 };
         }
@@ -831,6 +849,7 @@
     function updateTeamList() {
       const agents = {};
       filteredData.forEach(row => {
+        if (!row.agentName) return;
         if (!agents[row.agentName]) {
           agents[row.agentName] = {
             teamLead: row.teamLead,
@@ -873,6 +892,11 @@
     function updateTable() {
       const tbody = document.getElementById('tableBody');
       tbody.innerHTML = '';
+      
+      if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No data available</td></tr>';
+        return;
+      }
       
       filteredData.slice(0, 50).forEach(row => {
         const tr = document.createElement('tr');
@@ -927,7 +951,10 @@
     });
 
     // Initialize
-    window.onload = loadData;
+    window.onload = function() {
+      console.log('🚀 Dashboard initializing...');
+      loadData();
+    };
   </script>
 </body>
 </html>
