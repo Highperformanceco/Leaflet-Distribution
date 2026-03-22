@@ -30,7 +30,6 @@
       margin: 0 auto;
     }
 
-    /* Header */
     .dashboard-header {
       background: white;
       border-radius: 24px;
@@ -56,7 +55,6 @@
       display: inline-block;
     }
 
-    /* Loading Spinner */
     .loading-overlay {
       position: fixed;
       top: 0;
@@ -91,7 +89,6 @@
       font-weight: 500;
     }
 
-    /* Filter Panel */
     .filter-panel {
       background: white;
       border-radius: 20px;
@@ -162,7 +159,6 @@
       cursor: pointer;
     }
 
-    /* KPI Cards */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -210,7 +206,6 @@
       font-weight: 600;
     }
 
-    /* Charts Grid */
     .charts-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -243,7 +238,6 @@
       position: relative;
     }
 
-    /* Zone Performance */
     .zone-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -287,7 +281,6 @@
       transition: width 0.3s ease;
     }
 
-    /* Team Performance */
     .team-list {
       background: white;
       border-radius: 20px;
@@ -326,7 +319,6 @@
       margin-right: 5px;
     }
 
-    /* Table */
     .table-container {
       background: white;
       border-radius: 24px;
@@ -354,7 +346,6 @@
       color: #2D3A45;
     }
 
-    /* Colors */
     .purple { color: #A05AFF; }
     .teal { color: #1BCFB4; }
     .coral { color: #FE9496; }
@@ -362,7 +353,6 @@
   </style>
 </head>
 <body>
-  <!-- Loading Spinner -->
   <div id="loadingOverlay" class="loading-overlay">
     <div style="text-align: center;">
       <div class="spinner"></div>
@@ -371,7 +361,6 @@
   </div>
 
   <div class="dashboard-container">
-    <!-- Header -->
     <div class="dashboard-header d-flex justify-content-between align-items-center">
       <div>
         <h3>📋 Leaflet Distribution Dashboard <span class="secure-badge">🔒 Live Data</span></h3>
@@ -389,7 +378,6 @@
       </div>
     </div>
 
-    <!-- Filters -->
     <div class="filter-panel">
       <div class="filter-item">
         <div class="filter-label">TEAM LEAD</div>
@@ -422,7 +410,6 @@
       </div>
     </div>
 
-    <!-- KPI Cards -->
     <div class="kpi-grid">
       <div class="kpi-card">
         <div class="kpi-value" id="totalVisits">0</div>
@@ -446,12 +433,8 @@
       </div>
     </div>
 
-    <!-- Zone Performance -->
-    <div class="zone-grid" id="zoneGrid">
-      <!-- Will be populated by JavaScript -->
-    </div>
+    <div class="zone-grid" id="zoneGrid"></div>
 
-    <!-- Charts Grid -->
     <div class="charts-grid">
       <div class="chart-card">
         <div class="chart-title">
@@ -473,15 +456,11 @@
       </div>
     </div>
 
-    <!-- Team Performance List -->
     <div class="team-list">
       <div class="chart-title" style="margin-bottom: 15px;">👥 Agent Performance</div>
-      <div id="teamList">
-        <!-- Will be populated by JavaScript -->
-      </div>
+      <div id="teamList"></div>
     </div>
 
-    <!-- Detailed Table -->
     <div class="table-container">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <span class="chart-title" style="margin: 0;">📋 Detailed Records</span>
@@ -500,8 +479,7 @@
               <th>Opened</th>
               <th>KYC</th>
               <th>Notes</th>
-             </tr>
-          </thead>
+            </thead>
           <tbody id="tableBody">
             <tr><td colspan="9" class="text-center">Loading data...</td></tr>
           </tbody>
@@ -513,22 +491,15 @@
   <script>
     Chart.register(ChartDataLabels);
 
-    // ===========================================
-    // YOUR APPS SCRIPT URL
-    // ===========================================
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyhM9yzpkeQlDc6km2OvABI3hHfFgaOYg9h5WQse8GRmmkV51wBSkisfBKrI7MEAoB51w/exec';
     
-    // Target per agent
     const TARGET_VISITS = 10;
     const TARGET_KYC = 10;
     
-    // Globals
     let allData = [];
     let filteredData = [];
     let charts = {};
-    let teamStructure = [];
 
-    // Hide loader
     function hideLoader() {
       document.getElementById('loadingOverlay').style.opacity = '0';
       setTimeout(() => {
@@ -536,7 +507,6 @@
       }, 300);
     }
 
-    // Show error
     function showError(message) {
       const container = document.querySelector('.dashboard-container');
       const errorDiv = document.createElement('div');
@@ -550,21 +520,11 @@
       hideLoader();
     }
 
-    // ===========================================
-    // Load Data
-    // ===========================================
     async function loadData() {
       try {
         console.log('🚀 Loading dashboard data...');
-        
         document.getElementById('loadingOverlay').style.display = 'flex';
         
-        console.log('📡 Fetching agents...');
-        const agentsResponse = await fetch(APPS_SCRIPT_URL + '?action=getAgents');
-        teamStructure = await agentsResponse.json();
-        console.log('✅ Team structure loaded:', teamStructure);
-        
-        console.log('📡 Fetching leaflet data...');
         const dataResponse = await fetch(APPS_SCRIPT_URL + '?action=getLeafletData');
         
         if (!dataResponse.ok) {
@@ -580,7 +540,7 @@
         
         if (Array.isArray(rawData) && rawData.length > 0) {
           allData = rawData.map(row => ({
-            date: row.Date ? new Date(row.Date).toISOString().split('T')[0] : '',
+            date: row.Date ? row.Date.split('T')[0] : '',
             agentName: row.AgentName || '',
             teamLead: row.TeamLead || '',
             zone: row.Zone || '',
@@ -645,8 +605,6 @@
     function updateDashboard() {
       console.log('🔄 Updating dashboard...');
       
-      const total = filteredData.length;
-      
       const totalVisits = filteredData.reduce((sum, row) => sum + (row.visited || 0), 0);
       const totalLeaflets = filteredData.reduce((sum, row) => sum + (row.leaflets || 0), 0);
       const totalKYC = filteredData.reduce((sum, row) => sum + (row.kyc || 0), 0);
@@ -681,7 +639,7 @@
       updateTeamList();
       updateTable();
       
-      document.getElementById('recordCount').innerText = total + ' records';
+      document.getElementById('recordCount').innerText = filteredData.length + ' records';
       console.log('✅ Dashboard updated');
     }
 
@@ -766,16 +724,12 @@
           maintainAspectRatio: false,
           plugins: {
             legend: { position: 'bottom' },
-            datalabels: {
-              color: '#2D3A45',
-              font: { weight: 'bold' },
-              formatter: (value) => value
-            }
+            datalabels: { display: false }
           }
         }
       });
 
-      // FIXED: Daily Trends Chart - Proper date handling
+      // FIXED: Daily Trends Chart - Simple string comparison
       const last7Days = [];
       const dailyVisits = [];
       const dailyKYC = [];
@@ -788,18 +742,12 @@
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
+        const targetDate = `${year}-${month}-${day}`;
         const displayDate = `${month}-${day}`;
         last7Days.push(displayDate);
         
-        const dayData = filteredData.filter(row => {
-          if (!row.date) return false;
-          let rowDateStr = row.date;
-          if (row.date.includes('T')) {
-            rowDateStr = row.date.split('T')[0];
-          }
-          return rowDateStr === dateStr;
-        });
+        // Simple string comparison - no Date objects!
+        const dayData = filteredData.filter(row => row.date === targetDate);
         
         const visits = dayData.reduce((sum, d) => sum + (d.visited || 0), 0);
         const kyc = dayData.reduce((sum, d) => sum + (d.kyc || 0), 0);
@@ -944,7 +892,6 @@
       });
     }
 
-    // Filter handlers
     document.getElementById('applyFilters').addEventListener('click', () => {
       const teamLead = document.getElementById('teamLeadFilter').value;
       const zone = document.getElementById('zoneFilter').value;
@@ -979,7 +926,6 @@
       updateDashboard();
     });
 
-    // Initialize
     window.onload = function() {
       console.log('🚀 Dashboard initializing...');
       loadData();
