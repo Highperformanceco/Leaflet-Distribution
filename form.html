@@ -221,8 +221,8 @@
     </div>
 
     <script>
-        // REPLACE THIS WITH YOUR NEW APPS SCRIPT URL
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwm7pRkt727A9_CalLfjCg_i95LFDVYnHA4MamB5a5JBpNz3GGUTfFRrWCK0wgxOIVI-g/exec';
+        // REPLACE THIS WITH YOUR APPS SCRIPT URL
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_NEW_DEPLOYMENT_URL/exec';
         
         let agentsList = [];
         let zonesList = [];
@@ -283,16 +283,20 @@
 
         async function loadData() {
             try {
+                // Load agents
                 const agentsResponse = await fetch(`${APPS_SCRIPT_URL}?action=getAgents`);
                 const agents = await agentsResponse.json();
                 agentsList = agents.map(a => a.name).filter(n => n);
                 
+                // Load ALL zones (independent)
                 const zonesResponse = await fetch(`${APPS_SCRIPT_URL}?action=getZones`);
                 zonesList = await zonesResponse.json();
                 
+                // Load ALL cities (independent)
                 const citiesResponse = await fetch(`${APPS_SCRIPT_URL}?action=getCities`);
                 citiesList = await citiesResponse.json();
                 
+                // Populate agent dropdown
                 const agentSelect = document.getElementById('agentName');
                 agentSelect.innerHTML = '<option value="">Select Agent</option>';
                 agentsList.forEach(agent => {
@@ -302,6 +306,7 @@
                     agentSelect.appendChild(option);
                 });
                 
+                // Initialize searchable dropdowns with ALL zones and cities
                 initSearchableDropdown('zoneInput', 'zoneDropdown', 'zoneSearch', 'zoneOptions', 'zone', zonesList);
                 initSearchableDropdown('cityInput', 'cityDropdown', 'citySearch', 'cityOptions', 'city', citiesList);
                 
