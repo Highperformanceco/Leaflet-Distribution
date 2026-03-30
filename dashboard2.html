@@ -125,7 +125,7 @@
     async function loadData() {
       try {
         document.getElementById('loadingOverlay').style.display = 'flex';
-        const dataResponse = await fetch(APPS_SCRIPT_URL + '?action=getLeafletData');
+        const dataResponse = await fetch(APPS_SCRIPT_URL + '?action=getLeafletData&_=' + new Date().getTime());
         if (!dataResponse.ok) throw new Error(`HTTP error! status: ${dataResponse.status}`);
         const rawData = await dataResponse.json();
         if (rawData.error) throw new Error(rawData.error);
@@ -145,6 +145,10 @@
             notes: row.Notes || ''
           }));
         }
+        
+        console.log('Total records loaded:', allData.length);
+        console.log('Dates in data:', [...new Set(allData.map(d => d.date))].sort());
+        
         filteredData = [...allData];
         populateFilters();
         updateDashboard();
@@ -152,6 +156,7 @@
       } catch (error) {
         console.error('Error:', error);
         hideLoader();
+        document.getElementById('tableBody').innerHTML = '<tr><td colspan="10" class="text-center text-danger">Error loading data: ' + error.message + '</td></tr>';
       }
     }
 
@@ -202,7 +207,6 @@
       const totalOpened = filteredData.reduce((sum, row) => sum + (row.opened || 0), 0);
       const totalNotOpened = filteredData.reduce((sum, row) => sum + (row.notOpened || 0), 0);
       
-      // FIX 1: Calculate based on agent-days (each agent has 10 target per day)
       const agentDailyData = {};
       filteredData.forEach(row => {
         if (!row.agentName) return;
@@ -273,7 +277,6 @@
     }
 
     function updateCharts() {
-      // Team Performance Chart
       const teams = {};
       filteredData.forEach(row => {
         if (!row.teamLead) return;
@@ -300,7 +303,6 @@
         }
       });
 
-      // City Performance Chart
       const cities = {};
       filteredData.forEach(row => {
         if (!row.city) return;
@@ -327,7 +329,6 @@
         }
       });
 
-      // Daily Trends Chart
       const dateGroups = {};
       filteredData.forEach(row => {
         if (!row.date) return;
@@ -387,12 +388,12 @@
       if (filteredData.length === 0) { tbody.innerHTML = '<tr><td colspan="10" class="text-center">No data available</td></tr>'; return; }
       filteredData.slice(0, 100).forEach(row => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${row.date || '-'}</td><td>${row.agentName || '-'}</td><td>${row.teamLead || '-'}</td><td>${row.zone || '-'}</td><td>${row.city || '-'}</td><td>${row.visited || '-'}</td><td>${row.leaflets || '-'}</td><td>${row.opened || '-'}</td><td>${row.kyc || '-'}</td><td>${row.notes || '-'}</td>`;
+        tr.innerHTML = `<td>${row.date || '-'}</td><td>${row.agentName || '-'}</td><td>${row.teamLead || '-'}</td><td>${row.zone || '-'}</td><td>${row.city || '-'}</td><td>${row.visited || '-'}</td><td>${row.leaflets || '-'}</td><td>${row.opened || '-'}</td><td>${row.kyc || '-'}</td><td>${(row.notes || '').substring(0, 50)}${(row.notes || '').length > 50 ? '...' : ''}</td>`;
         tbody.appendChild(tr);
       });
     }
 
-    // FIX 2: Fixed date range filter
+    // FIXED: Date range filter with proper string comparison
     document.getElementById('applyFilters').addEventListener('click', () => {
       const teamLead = document.getElementById('teamLeadFilter').value;
       const zone = document.getElementById('zoneFilter').value;
@@ -408,22 +409,21 @@
         if (city && row.city !== city) match = false;
         if (agent && row.agentName !== agent) match = false;
         
-        // Proper date comparison
+        // Simple string comparison for YYYY-MM-DD format dates
         if (startDate && row.date) {
-          const rowDate = new Date(row.date);
-          const start = new Date(startDate);
-          start.setHours(0, 0, 0, 0);
-          if (rowDate < start) match = false;
+          if (row.date < startDate) match = false;
         }
         if (endDate && row.date) {
-          const rowDate = new Date(row.date);
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          if (rowDate > end) match = false;
+          if (row.date > endDate) match = false;
         }
         
         return match;
       });
+      
+      console.log('Filter applied - Records:', filteredData.length);
+      console.log('Date range:', startDate, 'to', endDate);
+      console.log('Dates in filtered data:', [...new Set(filteredData.map(d => d.date))].sort());
+      
       updateDashboard();
     });
     
@@ -435,6 +435,7 @@
       document.getElementById('startDate').value = '';
       document.getElementById('endDate').value = '';
       filteredData = [...allData];
+      console.log('Filters reset - Records:', filteredData.length);
       updateDashboard();
     });
     
