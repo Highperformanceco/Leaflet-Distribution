@@ -48,17 +48,26 @@
     .zone-progress { height: 8px; background: #E9EDF2; border-radius: 20px; margin: 10px 0; overflow: hidden; }
     .zone-progress-bar { height: 100%; background: #A05AFF; border-radius: 20px; transition: width 0.3s ease; }
     .team-list { background: white; border-radius: 20px; padding: 15px; margin-bottom: 20px; }
-    .team-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #E9EDF2; }
+    .team-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #E9EDF2; flex-wrap: wrap; gap: 10px; }
     .team-row:last-child { border-bottom: none; }
-    .team-name { width: 140px; font-weight: 500; }
-    .team-stats { flex: 1; display: flex; gap: 20px; }
-    .team-stat { font-size: 0.9rem; }
+    .team-name { width: 180px; font-weight: 600; color: #2D3A45; }
+    .team-stats { flex: 2; display: flex; gap: 25px; flex-wrap: wrap; }
+    .team-stat { font-size: 0.85rem; }
     .team-stat span { color: #6B7A8D; margin-right: 5px; }
+    .team-status { min-width: 140px; text-align: right; }
     .table-container { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .table { width: 100%; border-collapse: collapse; }
     .table th { text-align: left; padding: 15px 10px; background: #F5F7FA; color: #2D3A45; font-size: 0.8rem; font-weight: 600; }
     .table td { padding: 12px 10px; border-bottom: 1px solid #E9EDF2; color: #2D3A45; }
     .purple { color: #A05AFF; } .teal { color: #1BCFB4; } .coral { color: #FE9496; } .blue { color: #4BCBEB; }
+    @media (max-width: 768px) {
+      .team-name { width: 100%; }
+      .team-stats { width: 100%; }
+      .team-status { width: 100%; text-align: left; }
+      .zone-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
@@ -67,9 +76,12 @@
   </div>
 
   <div class="dashboard-container">
-    <div class="dashboard-header d-flex justify-content-between align-items-center">
-      <div><h3>📋 Leaflet Distribution Dashboard <span class="secure-badge">🔒 Live Data</span></h3><p style="color: #6B7A8D; margin: 5px 0 0;">Real-time tracking & performance analytics</p></div>
-      <div style="display: flex; gap: 20px;">
+    <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h3>📋 Leaflet Distribution Dashboard <span class="secure-badge">🔒 Live Data</span></h3>
+        <p style="color: #6B7A8D; margin: 5px 0 0;">Real-time tracking & performance analytics | Target: 10 Visits & 10 KYC per day</p>
+      </div>
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
         <div style="text-align: right;"><div class="kpi-value" style="font-size: 1.5rem;" id="totalAgents">0</div><div style="color: #6B7A8D; font-size: 0.8rem;">Active Agents</div></div>
         <div style="text-align: right;"><div class="kpi-value" style="font-size: 1.5rem;" id="totalZones">0</div><div style="color: #6B7A8D; font-size: 0.8rem;">Active Zones</div></div>
         <div style="text-align: right;"><div class="kpi-value" style="font-size: 1.5rem;" id="totalCities">0</div><div style="color: #6B7A8D; font-size: 0.8rem;">Active Cities</div></div>
@@ -100,11 +112,26 @@
       <div class="chart-card"><div class="chart-title">📈 Daily Trends <span class="badge" style="background: #4BCBEB; color: white; padding: 3px 10px; border-radius: 40px;">All Dates</span></div><div class="chart-container"><canvas id="dailyTrendsChart"></canvas></div></div>
     </div>
 
-    <div class="team-list"><div class="chart-title" style="margin-bottom: 15px;">👥 Agent Performance</div><div id="teamList"></div></div>
+    <div class="team-list">
+      <div class="chart-title" style="margin-bottom: 15px;">👥 Agent Performance <span style="font-size: 0.7rem; font-weight: normal; color: #6B7A8D;">(Target: 10 KYC per day)</span></div>
+      <div id="teamList"></div>
+    </div>
 
     <div class="table-container">
-      <div class="d-flex justify-content-between align-items-center mb-3"><span class="chart-title" style="margin: 0;">📋 Detailed Records</span><span class="badge" style="background: #A05AFF; color: white; padding: 5px 15px; border-radius: 40px;" id="recordCount">0 records</span></div>
-      <div style="max-height: 400px; overflow-y: auto;"><table class="table" id="dataTable"><thead> <th>Date</th><th>Agent</th><th>Team Lead</th><th>Zone</th><th>City</th><th>Visited</th><th>Leaflets</th><th>Opened</th><th>KYC</th><th>Notes</th> </thead><tbody id="tableBody"> <td colspan="10" class="text-center">Loading data... </tbody> </table></div>
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <span class="chart-title" style="margin: 0;">📋 Detailed Records</span>
+        <span class="badge" style="background: #A05AFF; color: white; padding: 5px 15px; border-radius: 40px;" id="recordCount">0 records</span>
+      </div>
+      <div style="max-height: 400px; overflow-y: auto;">
+        <table class="table" id="dataTable">
+          <thead>
+            <tr><th>Date</th><th>Agent</th><th>Team Lead</th><th>Zone</th><th>City</th><th>Visited</th><th>Leaflets</th><th>Opened</th><th>KYC</th><th>Notes</th></tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="10" class="text-center">Loading data...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -299,7 +326,7 @@
         options: {
           responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25 } },
           plugins: { legend: { position: 'bottom' }, datalabels: { color: '#2D3A45', font: { weight: 'bold', size: 12 }, anchor: 'end', align: 'top', offset: 4, formatter: (value) => value > 0 ? value : '' } },
-          scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+          scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } }, x: { grid: { display: false } } }
         }
       });
 
@@ -325,7 +352,7 @@
         options: {
           responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25 } },
           plugins: { legend: { position: 'bottom' }, datalabels: { color: '#2D3A45', font: { weight: 'bold', size: 11 }, anchor: 'end', align: 'top', offset: 4, formatter: (value) => value > 0 ? value : '' } },
-          scales: { y: { beginAtZero: true }, x: { ticks: { rotation: 45, maxRotation: 45, minRotation: 45, font: { size: 10 } }, grid: { display: false } } }
+          scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } }, x: { ticks: { rotation: 45, maxRotation: 45, minRotation: 45, font: { size: 10 } }, grid: { display: false } } }
         }
       });
 
@@ -356,28 +383,61 @@
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { position: 'bottom' }, datalabels: { color: '#2D3A45', font: { weight: 'bold', size: 11 }, backgroundColor: 'white', borderRadius: 16, padding: { top: 4, bottom: 4, left: 8, right: 8 }, borderWidth: 1, borderColor: '#E9EDF2', offset: 10, align: 'top', formatter: (value) => value > 0 ? value : '' } },
-          scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+          scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } }, x: { title: { display: true, text: 'Date (MM-DD)' }, grid: { display: false } } }
         }
       });
     }
 
+    // FIXED: updateTeamList - Now checks KYC target (10) instead of Visits target
     function updateTeamList() {
       const agents = {};
       filteredData.forEach(row => {
         if (!row.agentName) return;
-        if (!agents[row.agentName]) agents[row.agentName] = { teamLead: row.teamLead, zone: row.zone, city: row.city, visited: 0, kyc: 0, days: 0 };
+        if (!agents[row.agentName]) agents[row.agentName] = { 
+          teamLead: row.teamLead, 
+          zone: row.zone, 
+          city: row.city, 
+          visited: 0, 
+          kyc: 0, 
+          days: 0 
+        };
         agents[row.agentName].visited += row.visited || 0;
         agents[row.agentName].kyc += row.kyc || 0;
         agents[row.agentName].days++;
       });
+      
       const teamList = document.getElementById('teamList');
       teamList.innerHTML = '';
-      Object.entries(agents).forEach(([name, data]) => {
+      
+      // Sort agents by average KYC (highest first)
+      const sortedAgents = Object.entries(agents).sort((a, b) => {
+        const avgKycA = a[1].kyc / a[1].days;
+        const avgKycB = b[1].kyc / b[1].days;
+        return avgKycB - avgKycA;
+      });
+      
+      sortedAgents.forEach(([name, data]) => {
         const avgVisits = (data.visited / data.days).toFixed(1);
-        const targetMet = avgVisits >= TARGET_VISITS ? 'target-met' : 'target-missed';
+        const avgKyc = (data.kyc / data.days).toFixed(1);
+        
+        // FIXED: Check KYC target (10) instead of Visits target
+        const targetMet = avgKyc >= TARGET_KYC;
+        const targetStatus = targetMet ? 'target-met' : 'target-missed';
+        const targetIcon = targetMet ? '🟢' : '🔴';
+        const targetText = targetMet ? 'Target Met' : 'Below Target';
+        
         const row = document.createElement('div');
         row.className = 'team-row';
-        row.innerHTML = `<div class="team-name">${name}</div><div class="team-stats"><div class="team-stat"><span>🏙️</span> ${data.city || '-'}</div><div class="team-stat"><span>📊</span> ${data.visited} visits</div><div class="team-stat"><span>✅</span> ${data.kyc} KYC</div><div class="team-stat"><span>📈</span> Avg ${avgVisits}/day</div></div><div class="${targetMet}">${avgVisits >= TARGET_VISITS ? '🎯 Target Met' : '⚠️ Below Target'}</div>`;
+        row.innerHTML = `
+          <div class="team-name"><strong>${name}</strong><br><span style="font-size: 0.7rem; color: #6B7A8D;">${data.teamLead || ''}</span></div>
+          <div class="team-stats">
+            <div class="team-stat"><span>🏙️</span> ${data.city || '-'}</div>
+            <div class="team-stat"><span>📊</span> ${data.visited} visits</div>
+            <div class="team-stat"><span>✅</span> ${data.kyc} KYC</div>
+            <div class="team-stat"><span>📈</span> Avg ${avgVisits}/${avgKyc} per day</div>
+          </div>
+          <div class="team-status ${targetStatus}">${targetIcon} ${targetText} (KYC: ${avgKyc}/${TARGET_KYC})</div>
+        `;
         teamList.appendChild(row);
       });
     }
@@ -388,12 +448,24 @@
       if (filteredData.length === 0) { tbody.innerHTML = '<tr><td colspan="10" class="text-center">No data available</td></tr>'; return; }
       filteredData.slice(0, 100).forEach(row => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${row.date || '-'}</td><td>${row.agentName || '-'}</td><td>${row.teamLead || '-'}</td><td>${row.zone || '-'}</td><td>${row.city || '-'}</td><td>${row.visited || '-'}</td><td>${row.leaflets || '-'}</td><td>${row.opened || '-'}</td><td>${row.kyc || '-'}</td><td>${(row.notes || '').substring(0, 50)}${(row.notes || '').length > 50 ? '...' : ''}</td>`;
+        const kycMet = row.kyc >= TARGET_KYC;
+        tr.innerHTML = `
+          <td>${row.date || '-'}</td>
+          <td>${row.agentName || '-'}</td>
+          <td>${row.teamLead || '-'}</td>
+          <td>${row.zone || '-'}</td>
+          <td>${row.city || '-'}</td>
+          <td>${row.visited || '-'}</td>
+          <td>${row.leaflets || '-'}</td>
+          <td>${row.opened || '-'}</td>
+          <td style="${kycMet ? 'color: #1BCFB4; font-weight: bold;' : 'color: #FE9496;'}">${row.kyc || '-'}</td>
+          <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${row.notes || ''}">${(row.notes || '').substring(0, 40)}${(row.notes || '').length > 40 ? '...' : ''}</td>
+        `;
         tbody.appendChild(tr);
       });
     }
 
-    // FIXED: Date range filter with proper string comparison
+    // Date range filter with proper string comparison
     document.getElementById('applyFilters').addEventListener('click', () => {
       const teamLead = document.getElementById('teamLeadFilter').value;
       const zone = document.getElementById('zoneFilter').value;
@@ -422,7 +494,6 @@
       
       console.log('Filter applied - Records:', filteredData.length);
       console.log('Date range:', startDate, 'to', endDate);
-      console.log('Dates in filtered data:', [...new Set(filteredData.map(d => d.date))].sort());
       
       updateDashboard();
     });
