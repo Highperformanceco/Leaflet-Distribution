@@ -110,7 +110,6 @@
 
   <script>
     Chart.register(ChartDataLabels);
-    // REPLACE THIS WITH YOUR NEW APPS SCRIPT URL
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwm7pRkt727A9_CalLfjCg_i95LFDVYnHA4MamB5a5JBpNz3GGUTfFRrWCK0wgxOIVI-g/exec';
     const TARGET_VISITS = 10;
     const TARGET_KYC = 10;
@@ -202,19 +201,40 @@
       const totalKYC = filteredData.reduce((sum, row) => sum + (row.kyc || 0), 0);
       const totalOpened = filteredData.reduce((sum, row) => sum + (row.opened || 0), 0);
       const totalNotOpened = filteredData.reduce((sum, row) => sum + (row.notOpened || 0), 0);
+      
+      // FIX 1: Calculate based on agent-days (each agent has 10 target per day)
+      const agentDailyData = {};
+      filteredData.forEach(row => {
+        if (!row.agentName) return;
+        const key = `${row.agentName}_${row.date}`;
+        if (!agentDailyData[key]) {
+          agentDailyData[key] = { visited: 0, kyc: 0 };
+        }
+        agentDailyData[key].visited += row.visited || 0;
+        agentDailyData[key].kyc += row.kyc || 0;
+      });
+      
+      const activeAgentDays = Object.keys(agentDailyData).length;
+      const expectedVisits = activeAgentDays * TARGET_VISITS;
+      const expectedKYC = activeAgentDays * TARGET_KYC;
+      
       const uniqueAgents = [...new Set(filteredData.map(d => d.agentName).filter(Boolean))].length;
       const uniqueZones = [...new Set(filteredData.map(d => d.zone).filter(Boolean))].length;
       const uniqueCities = [...new Set(filteredData.map(d => d.city).filter(Boolean))].length;
-      const expectedVisits = uniqueAgents * TARGET_VISITS;
-      const expectedKYC = uniqueAgents * TARGET_KYC;
       
+      const visitTargetPct = expectedVisits > 0 ? (totalVisits / expectedVisits * 100).toFixed(1) : 0;
+      const kycTargetPct = expectedKYC > 0 ? (totalKYC / expectedKYC * 100).toFixed(1) : 0;
+      const leafletPerVisit = totalVisits > 0 ? (totalLeaflets / totalVisits).toFixed(1) : 0;
+      const successRate = totalVisits > 0 ? ((totalOpened / totalVisits) * 100).toFixed(1) : 0;
+
       document.getElementById('totalVisits').innerText = totalVisits;
       document.getElementById('totalLeaflets').innerText = totalLeaflets;
       document.getElementById('totalKYC').innerText = totalKYC;
-      document.getElementById('successRate').innerText = totalVisits > 0 ? ((totalOpened / totalVisits) * 100).toFixed(1) + '%' : '0%';
-      document.getElementById('visitTarget').innerText = expectedVisits > 0 ? (totalVisits / expectedVisits * 100).toFixed(1) + '%' : '0%';
-      document.getElementById('kycTarget').innerText = expectedKYC > 0 ? (totalKYC / expectedKYC * 100).toFixed(1) + '%' : '0%';
-      document.getElementById('leafletPerVisit').innerText = totalVisits > 0 ? (totalLeaflets / totalVisits).toFixed(1) : '0';
+      document.getElementById('successRate').innerText = successRate + '%';
+      
+      document.getElementById('visitTarget').innerText = visitTargetPct + '%';
+      document.getElementById('kycTarget').innerText = kycTargetPct + '%';
+      document.getElementById('leafletPerVisit').innerText = leafletPerVisit;
       document.getElementById('openedRate').innerText = totalOpened;
       document.getElementById('notOpenedRate').innerText = totalNotOpened;
       document.getElementById('totalAgents').innerText = uniqueAgents;
@@ -367,11 +387,12 @@
       if (filteredData.length === 0) { tbody.innerHTML = '<tr><td colspan="10" class="text-center">No data available</td></tr>'; return; }
       filteredData.slice(0, 100).forEach(row => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${row.date || '-'}<td>${row.agentName || '-'}<td>${row.teamLead || '-'}<td>${row.zone || '-'}<td>${row.city || '-'}<td>${row.visited || '-'}<td>${row.leaflets || '-'}<td>${row.opened || '-'}<td>${row.kyc || '-'}<td>${row.notes || '-'}`;
+        tr.innerHTML = `<td>${row.date || '-'}</td><td>${row.agentName || '-'}</td><td>${row.teamLead || '-'}</td><td>${row.zone || '-'}</td><td>${row.city || '-'}</td><td>${row.visited || '-'}</td><td>${row.leaflets || '-'}</td><td>${row.opened || '-'}</td><td>${row.kyc || '-'}</td><td>${row.notes || '-'}</td>`;
         tbody.appendChild(tr);
       });
     }
 
+    // FIX 2: Fixed date range filter
     document.getElementById('applyFilters').addEventListener('click', () => {
       const teamLead = document.getElementById('teamLeadFilter').value;
       const zone = document.getElementById('zoneFilter').value;
@@ -379,14 +400,28 @@
       const agent = document.getElementById('agentFilter').value;
       const startDate = document.getElementById('startDate').value;
       const endDate = document.getElementById('endDate').value;
+      
       filteredData = allData.filter(row => {
         let match = true;
         if (teamLead && row.teamLead !== teamLead) match = false;
         if (zone && row.zone !== zone) match = false;
         if (city && row.city !== city) match = false;
         if (agent && row.agentName !== agent) match = false;
-        if (startDate && row.date < startDate) match = false;
-        if (endDate && row.date > endDate) match = false;
+        
+        // Proper date comparison
+        if (startDate && row.date) {
+          const rowDate = new Date(row.date);
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (rowDate < start) match = false;
+        }
+        if (endDate && row.date) {
+          const rowDate = new Date(row.date);
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (rowDate > end) match = false;
+        }
+        
         return match;
       });
       updateDashboard();
